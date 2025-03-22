@@ -1,56 +1,13 @@
-version: '3.8'
+FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
 
-services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:5000/api
-    networks:
-      - school-network
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --only=production
+COPY . .
+RUN npm run build
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    depends_on:
-      - postgres
-    environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/schooldb
-      - JWT_SECRET=your_jwt_secret_here_change_in_production
-      - NODE_ENV=development
-    networks:
-      - school-network
-
-  postgres:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=schooldb
-    networks:
-      - school-network
-
-networks:
-  school-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
+FROM --platform=$TARGETPLATFORM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
