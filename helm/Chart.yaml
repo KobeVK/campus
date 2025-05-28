@@ -1,0 +1,6 @@
+apiVersion: v2
+name: school-website
+description: A Helm chart for Private School Website
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

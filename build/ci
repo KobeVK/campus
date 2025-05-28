@@ -1,0 +1,14 @@
+
+# Build and deployment commands
+
+# Build Docker image:
+# docker build -t school-website:latest .
+
+# Deploy with Helm:
+# helm install school-website ./helm
+
+# Upgrade with Helm:
+# helm upgrade school-website ./helm
+
+# Uninstall:
+# helm uninstall school-website
