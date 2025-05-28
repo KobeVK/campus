@@ -1,10 +1,12 @@
-
 replicaCount: 1
 
 image:
-  repository: school-website
-  tag: latest
+  repository: campus1.jfrtpt.org/docker/campus
+  tag: latest-arm64
   pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: jfrog-secret
 
 service:
   type: ClusterIP
@@ -27,6 +29,15 @@ ingress:
       hosts:
         - school.example.com
 
+nodeSelector:
+  node.kubernetes.io/role: artifactory-service
+
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: artifactory-service
+    effect: NoSchedule
+
 resources:
   limits:
     cpu: 200m
@@ -41,8 +52,4 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
 
-nodeSelector: {}
-tolerations: []
 affinity: {}
-
----
