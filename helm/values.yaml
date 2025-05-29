@@ -1,33 +1,70 @@
 replicaCount: 1
 
-image:
-  repository: campus1.jfrtpt.org/docker/campus
-  tag: latest-arm64
-  pullPolicy: IfNotPresent
+frontend:
+  enabled: true
+  image:
+    repository: campus1.mydomain.org/docker/campus
+    tag: latest-arm64
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+backend:
+  enabled: true
+  image:
+    repository: campus1.jfrtpt.org/docker/campus-backend
+    tag: latest-arm64
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 3001
+    targetPort: 3001
+  env:
+    NODE_ENV: production
+    PORT: "3001"
+    DB_HOST: ""
+    DB_PORT: "5432"
+    DB_NAME: "campus"
+    DB_USER: "campus_admin"
+    DB_PASSWORD: "school_password_2025"
+    JWT_SECRET: "your-super-secret-jwt-key-change-in-production-2025"
+    JWT_EXPIRY: "24h"
+    FRONTEND_URL: "*"
+    RATE_LIMIT_WINDOW_MS: "900000"
+    RATE_LIMIT_MAX_REQUESTS: "1000"
 
 imagePullSecrets:
   - name: jfrog-secret
-
-service:
-  type: ClusterIP
-  port: 80
-  targetPort: 80
 
 ingress:
   enabled: true
   className: "nginx"
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/rewrite-target: /
   hosts:
     - host: school.example.com
-      paths:
-        - path: /
-          pathType: Prefix
   tls:
     - secretName: school-website-tls
       hosts:
         - school.example.com
+
+resources:
+  frontend:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  backend:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
 
 nodeSelector:
   node.kubernetes.io/role: artifactory-service
@@ -37,19 +74,5 @@ tolerations:
     operator: Equal
     value: artifactory-service
     effect: NoSchedule
-
-resources:
-  limits:
-    cpu: 200m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-autoscaling:
-  enabled: false
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
 
 affinity: {}

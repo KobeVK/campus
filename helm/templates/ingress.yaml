@@ -28,14 +28,28 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
+          # API and health endpoints go to backend
+          - path: /api
+            pathType: Prefix
             backend:
               service:
-                name: {{ include "school-website.fullname" $ }}
+                name: {{ include "school-website.fullname" $ }}-backend
                 port:
-                  number: {{ $.Values.service.port }}
-          {{- end }}
+                  number: {{ $.Values.backend.service.port }}
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "school-website.fullname" $ }}-backend
+                port:
+                  number: {{ $.Values.backend.service.port }}
+          # Everything else goes to frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "school-website.fullname" $ }}-frontend
+                port:
+                  number: {{ $.Values.frontend.service.port }}
     {{- end }}
 {{- end }}
