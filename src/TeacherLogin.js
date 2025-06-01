@@ -171,6 +171,7 @@ function LoginPage({ onLogin }) {
 // Admin Dashboard Component
 function AdminDashboard({ user, onLogout }) {
   const [activeSection, setActiveSection] = useState('overview');
+  const [currentView, setCurrentView] = useState('main'); // 'main', 'add-teacher', etc.
 
   const menuItems = [
     { id: 'overview', label: 'סקירה כללית', icon: BarChart3 },
@@ -216,7 +217,10 @@ function AdminDashboard({ user, onLogout }) {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      setCurrentView('main'); // Reset to main view when switching sections
+                    }}
                     className={`w-full flex items-center px-4 py-3 text-right rounded-lg transition-colors ${
                       activeSection === item.id
                         ? 'bg-purple-100 text-purple-700 border-r-4 border-purple-600'
@@ -233,12 +237,17 @@ function AdminDashboard({ user, onLogout }) {
 
           {/* Main Content */}
           <div className="flex-1">
-            {activeSection === 'overview' && <AdminOverview />}
-            {activeSection === 'teachers' && <TeachersManagement />}
-            {activeSection === 'schools' && <SchoolsManagement />}
-            {activeSection === 'classes' && <ClassesManagement />}
-            {activeSection === 'students' && <StudentsManagement />}
-            {activeSection === 'settings' && <AdminSettings />}
+            {currentView === 'add-teacher' && <AddTeacher onBack={() => setCurrentView('main')} />}
+            {currentView === 'main' && (
+              <>
+                {activeSection === 'overview' && <AdminOverview />}
+                {activeSection === 'teachers' && <TeachersManagement onAddTeacher={() => setCurrentView('add-teacher')} />}
+                {activeSection === 'schools' && <SchoolsManagement />}
+                {activeSection === 'classes' && <ClassesManagement />}
+                {activeSection === 'students' && <StudentsManagement />}
+                {activeSection === 'settings' && <AdminSettings />}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -324,6 +333,392 @@ function TeacherDashboard({ user, onLogout }) {
 }
 
 // Admin Components
+function AddTeacher({ onBack }) {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    username: '',
+    password: '',
+    profession: '',
+    experience: '',
+    education: '',
+    subjects: [],
+    address: '',
+    emergencyContact: '',
+    emergencyPhone: '',
+    startDate: '',
+    salary: '',
+    notes: ''
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const professions = [
+    'מתמטיקה', 'אנגלית', 'פיזיקה', 'כימיה', 'ביולוגיה',
+    'היסטוריה', 'גאוגרפיה', 'ספרות', 'תנ"ך', 'אמנות',
+    'מוסיקה', 'חינוך גשמי', 'מדעי המחשב', 'אחר'
+  ];
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubjectToggle = (subject) => {
+    setFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.includes(subject)
+        ? prev.subjects.filter(s => s !== subject)
+        : [...prev.subjects, subject]
+    }));
+  };
+
+  const validateForm = () => {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.username) {
+      setError('נא למלא את כל השדות החובה');
+      return false;
+    }
+    
+    if (!formData.email.includes('@')) {
+      setError('נא להכניס כתובת אימייל תקינה');
+      return false;
+    }
+
+    if (formData.password && formData.password.length < 6) {
+      setError('סיסמה חייבת להכיל לפחות 6 תווים');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/teachers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      console.log('Teacher data to submit:', formData);
+      setSuccess(true);
+      
+      // Reset form after success
+      setTimeout(() => {
+        setSuccess(false);
+        onBack();
+      }, 2000);
+
+    } catch (err) {
+      setError('שגיאה בשמירת המורה. אנא נסה שוב.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <button 
+            onClick={onBack}
+            className="ml-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">הוסף מורה חדש</h2>
+        </div>
+      </div>
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
+          המורה נוסף בהצלחה! מעביר חזרה לרשימה...
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Form */}
+      <div className="bg-white rounded-xl shadow-sm p-8">
+        <div className="space-y-8">
+          {/* Personal Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">פרטים אישיים</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  שם פרטי <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="הכנס שם פרטי"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  שם משפחה <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="הכנס שם משפחה"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  אימייל <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="teacher@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  טלפון
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="050-1234567"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Login Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">פרטי התחברות</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  שם משתמש <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="הכנס שם משתמש ייחודי"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  סיסמה זמנית
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="יש להכניס סיסמה זמנית"
+                />
+                <p className="text-xs text-gray-500 mt-1">המורה יתבקש לשנות את הסיסמה בכניסה הראשונה</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Professional Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">פרטים מקצועיים</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  מקצוע עיקרי
+                </label>
+                <select
+                  value={formData.profession}
+                  onChange={(e) => handleInputChange('profession', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">בחר מקצוע</option>
+                  {professions.map(prof => (
+                    <option key={prof} value={prof}>{prof}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  שנות ניסיון
+                </label>
+                <input
+                  type="number"
+                  value={formData.experience}
+                  onChange={(e) => handleInputChange('experience', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="מספר שנות הניסיון"
+                  min="0"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  השכלה
+                </label>
+                <input
+                  type="text"
+                  value={formData.education}
+                  onChange={(e) => handleInputChange('education', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="תואר ומוסד לימודים"
+                />
+              </div>
+            </div>
+
+            {/* Subjects */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                מקצועות הוראה
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {professions.slice(0, -1).map(subject => (
+                  <label key={subject} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.subjects.includes(subject)}
+                      onChange={() => handleSubjectToggle(subject)}
+                      className="ml-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700">{subject}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">מידע נוסף</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  כתובת
+                </label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="כתובת מגורים"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  תאריך תחילת עבודה
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => handleInputChange('startDate', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  איש קשר לחירום
+                </label>
+                <input
+                  type="text"
+                  value={formData.emergencyContact}
+                  onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="שם איש קשר"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  טלפון חירום
+                </label>
+                <input
+                  type="tel"
+                  value={formData.emergencyPhone}
+                  onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="050-1234567"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  הערות
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  rows="3"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="הערות נוספות..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex gap-4 pt-6 border-t">
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              ביטול
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'שומר...' : 'שמור מורה'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminOverview() {
   return (
     <div className="space-y-6">
@@ -382,12 +777,15 @@ function AdminOverview() {
   );
 }
 
-function TeachersManagement() {
+function TeachersManagement({ onAddTeacher }) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">ניהול מורים</h2>
-        <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
+        <button 
+          onClick={onAddTeacher}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center"
+        >
           <Plus className="w-4 h-4 ml-2" />
           הוסף מורה
         </button>
