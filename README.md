@@ -1,4 +1,4 @@
-# בית ספר הר המורה - School Website
+# הקמפוס הצעיר - School Website
 
 A modern, responsive school website built with React and designed for Hebrew (RTL) content.
 
@@ -150,7 +150,7 @@ Edit `helm/values.yaml` to customize:
 
 For questions about the school website or technical issues:
 - Email: info@campus.co.il
-- Phone: 03-1234567
+- Phone: 050-3147777
 
 ## 🏫 About campus School
 
@@ -277,7 +277,7 @@ Content-Type: application/json
 
 {
   "class_name": "כיתה ז1",
-  "school_name": "בית ספר הר המורה",
+  "school_name": "הקמפוס הצעיר",
   "profession": "מתמטיקה",
   "grade_level": "כיתה ז",
   "academic_year": "2025",
@@ -561,9 +561,17 @@ psql -h new-rds < backup.sql
 
 ```
 kubectl create secret docker-registry jfrog-secret \
-  --docker-server= \
+  --docker-server=https://campus2.jfrtpt.org \
   --docker-username=admin \
   --docker-password=Omer1107 \
   --docker-email=admin@campus.local \
   -n campus
 ```
+
+1. change all occurences of campus2 to new domain
+2. change rds port
+3. log in to artifactory and change PWD to Omer1107
+4. create docker repo called docker
+5. create ns called campus
+6. create artifactory secret for docker
+7. run setup_db

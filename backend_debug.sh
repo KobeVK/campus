@@ -4,7 +4,7 @@
 set +e  # Don't exit on errors
 
 NAMESPACE="campus"
-REGISTRY="campus1.jfrtpt.org/docker"
+REGISTRY="campus2.jfrtpt.org/docker"
 
 echo "🔧 Backend Health Check & Fix"
 echo "============================="

@@ -9,7 +9,7 @@ DB_PASSWORD="school_password_2025"
 
 # RDS connection variables
 RDS_HOST="127.0.0.1"
-rds_sdm_port="10403"  # Default to 5432 if not set
+rds_sdm_port="10403"  
 
 echo "Creating database and user..."
 echo "Connecting to RDS at ${RDS_HOST}:${rds_sdm_port}"
@@ -117,7 +117,7 @@ VALUES ('sarah.cohen', 'sarah.cohen@school.local', '\$2b\$10\$92IXUNpkjO0rOQ5byM
 
 -- Insert sample classes
 INSERT INTO classes (teacher_id, class_name, school_name, profession, grade_level) 
-SELECT id, 'כיתה ז1', 'בית ספר הר המורה', 'מתמטיקה', 'כיתה ז' 
+SELECT id, 'כיתה ז1', 'מקיף ח', 'מתמטיקה', 'כיתה ז' 
 FROM teachers WHERE username = 'sarah.cohen';
 
 EOF

@@ -68,7 +68,7 @@ function SchoolWebsite() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <div className="text-3xl font-bold text-blue-600">🏫</div>
-              <h1 className="mr-4 text-2xl font-bold text-gray-900">בית ספר הר המורה</h1>
+              <h1 className="mr-4 text-2xl font-bold text-gray-900">הקמפוס הצעיר</h1>
             </div>
             
             {/* Login Buttons */}
@@ -94,7 +94,7 @@ function SchoolWebsite() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-5xl font-bold text-gray-900 mb-6 animate-fade-in">
-            ברוכים הבאים לבית ספר הר המורה
+            ברוכים הבאים לקמפוס הצעיר
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             מובילים בחינוך איכותי, בונים עתיד מזהיר לתלמידינו
@@ -151,7 +151,7 @@ function SchoolWebsite() {
       {/* Footer */}
       <footer className="bg-gray-800 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p>&copy; 2025 בית ספר הר המורה. כל הזכויות שמורות.</p>
+          <p>&copy; 2025 כל הזכויות השמורות לקמפוס הצעיר בעמ.</p>
         </div>
       </footer>
     </div>

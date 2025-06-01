@@ -5,7 +5,7 @@
 
 set -e
 
-REGISTRY="campus1.jfrtpt.org/docker"
+REGISTRY="campus2.jfrtpt.org/docker"
 TAG="latest-arm64"
 NAMESPACE="campus"
 
