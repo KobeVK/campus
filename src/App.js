@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { 
   Phone, Mail, MapPin, Calendar, Users, Award, BookOpen, 
   Star, ChevronRight, Menu, X, Facebook, Instagram, Youtube,
@@ -28,7 +28,7 @@ function SchoolWebsite() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const handleTeacherLogin = () => {
-    window.location.href = '/teacher-login';
+    window.location.href = '/admin';
   };
 
   const handleStudentLogin = () => {
@@ -190,12 +190,12 @@ function SchoolWebsite() {
 
             {/* Login Buttons */}
             <div className="flex space-x-3">
-              <button
-                onClick={handleTeacherLogin}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-sm lg:text-base"
+              <Link
+                to="/admin"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-sm lg:text-base text-center"
               >
                 כניסת מורים
-              </button>
+              </Link>
               <button
                 onClick={handleStudentLogin}
                 className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-sm lg:text-base"
@@ -277,12 +277,13 @@ function SchoolWebsite() {
             
             {/* Call to Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <button className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border border-white/30 font-medium py-4 px-8 rounded-lg transition duration-200 text-lg shadow-lg hover:shadow-xl transform hover:scale-105">
+              <a href="#about" className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border border-white/30 font-medium py-4 px-8 rounded-lg transition duration-200 text-lg shadow-lg hover:shadow-xl transform hover:scale-105 text-center">
                 גלה עוד על בית הספר
-              </button>
+              </a>
             <a 
               href="https://api.whatsapp.com/send?phone=972503147777&text=שלום%2C%20אני%20מעוניין%20לקבוע%20פגישת%20היכרות%20בבית%20הספר"
               target="_blank"
+              rel="noopener noreferrer"
               className="bg-blue-600/80 backdrop-blur-sm hover:bg-blue-700 text-white font-medium py-4 px-8 rounded-lg transition duration-200 text-lg shadow-lg hover:shadow-xl transform hover:scale-105 text-center"
             >
               קבע פגישת היכרות
@@ -393,37 +394,37 @@ function SchoolWebsite() {
         </div>
       </section>
 
-{/* Faculty Section */}
-<section id="faculty" className="py-20 bg-gray-50">
-  <div className="container mx-auto px-4">
-    <div className="flex flex-col items-center text-center">
-      {/* כותרת וטקסט */}
-      <div className="max-w-4xl mb-16">
-        <h3 className="text-4xl font-bold text-gray-900 mb-6">הצוות הפדגוגי שלנו</h3>
-        <p className="text-lg text-gray-600 mb-6">
-          מורים מנוסים ומסורים עם הכשרה אקדמית מתקדמת ותשוקה אמיתית לחינוך
-        </p>
-        <p className="text-lg text-gray-600">
-          הצוות הפדגוגי שלנו מורכב ממורים מנוסים ומסורים, שמשלבים שיטות הוראה מתקדמות עם טכנולוגיות חדישות 
-          כדי להכין את התלמידים לעולם של מחר.
-        </p>
-      </div>
+      {/* Faculty Section */}
+      <section id="faculty" className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center text-center">
+            {/* כותרת וטקסט */}
+            <div className="max-w-4xl mb-16">
+              <h3 className="text-4xl font-bold text-gray-900 mb-6">הצוות הפדגוגי שלנו</h3>
+              <p className="text-lg text-gray-600 mb-6">
+                מורים מנוסים ומסורים עם הכשרה אקדמית מתקדמת ותשוקה אמיתית לחינוך
+              </p>
+              <p className="text-lg text-gray-600">
+                הצוות הפדגוגי שלנו מורכב ממורים מנוסים ומסורים, שמשלבים שיטות הוראה מתקדמות עם טכנולוגיות חדישות 
+                כדי להכין את התלמידים לעולם של מחר.
+              </p>
+            </div>
 
-      {/* גריד חברי הסגל */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl w-full">
-        {facultyMembers.map((member, index) => (
-          <div key={index} className="bg-white rounded-xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
-            <div className="text-6xl mb-4">{member.image}</div>
-            <h4 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h4>
-            <p className="text-blue-600 font-medium mb-2">{member.position}</p>
-            <p className="text-sm text-gray-500 mb-3">{member.experience}</p>
-            <p className="text-gray-600 text-sm">{member.description}</p>
+            {/* גריד חברי הסגל */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl w-full">
+              {facultyMembers.map((member, index) => (
+                <div key={index} className="bg-white rounded-xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
+                  <div className="text-6xl mb-4">{member.image}</div>
+                  <h4 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h4>
+                  <p className="text-blue-600 font-medium mb-2">{member.position}</p>
+                  <p className="text-sm text-gray-500 mb-3">{member.experience}</p>
+                  <p className="text-gray-600 text-sm">{member.description}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </div>
-</section>
+        </div>
+      </section>
 
       {/* Testimonials */}
       <section className="py-20 bg-blue-600">
@@ -543,7 +544,7 @@ function SchoolWebsite() {
             {/* Contact Form */}
             <div className="bg-white rounded-xl p-8 shadow-lg">
               <h4 className="text-2xl font-semibold text-gray-900 mb-6">שלח הודעה</h4>
-              <form className="space-y-6">
+              <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">שם מלא</label>
                   <input
@@ -581,12 +582,12 @@ function SchoolWebsite() {
                 </div>
                 
                 <button
-                  type="submit"
+                  type="button"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200"
                 >
                   שלח הודעה
                 </button>
-              </form>
+              </div>
             </div>
           </div>
         </div>
@@ -656,7 +657,7 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<SchoolWebsite />} />
-        <Route path="/teacher-login" element={<TeacherLogin />} />
+        <Route path="/admin" element={<TeacherLogin />} />
         <Route path="/student-login" element={<StudentLogin />} />
       </Routes>
     </Router>
