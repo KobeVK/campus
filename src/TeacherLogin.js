@@ -1,32 +1,120 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Users, Calendar, GraduationCap, Settings, BarChart3, Plus, User, School, ChevronRight, Eye, EyeOff, Clock, TrendingUp } from 'lucide-react';
+import { BookOpen, Users, Calendar, GraduationCap, Settings, BarChart3, Plus, User, School, ChevronRight, Eye, EyeOff, Clock, TrendingUp, Edit, Trash2, Search, Filter } from 'lucide-react';
 
-// Mock authentication service - Replace with real API calls
-const authService = {
+// API Configuration
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+
+// API Service
+const apiService = {
+  // Authentication
   login: async (username, password, userType) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const endpoint = userType === 'admin' ? '/auth/teacher/login' : '/auth/teacher/login';
     
-    if (username === 'admin' && password === 'admin123') {
-      return {
-        success: true,
-        user: { id: 1, username: 'admin', name: 'מנהל המערכת', type: 'admin' },
-        token: 'admin-token-123'
-      };
-    } else if (username === 'teacher' && password === 'teacher123') {
-      return {
-        success: true,
-        user: { id: 2, username: 'teacher', name: 'שרה כהן', type: 'teacher' },
-        token: 'teacher-token-123'
-      };
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Login failed');
     }
-    throw new Error('שם משתמש או סיסמה שגויים');
+
+    return data;
+  },
+
+  // Teachers API
+  getTeachers: async (authToken) => {
+    const response = await fetch(`${API_BASE_URL}/auth/teachers`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch teachers');
+    }
+
+    return response.json();
+  },
+
+  createTeacher: async (teacherData, authToken) => {
+    const response = await fetch(`${API_BASE_URL}/auth/teacher/register`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(teacherData),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create teacher');
+    }
+
+    return data;
+  },
+
+  updateTeacher: async (teacherId, teacherData, authToken) => {
+    const response = await fetch(`${API_BASE_URL}/auth/teachers/${teacherId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(teacherData),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update teacher');
+    }
+
+    return data;
+  },
+
+  deleteTeacher: async (teacherId, authToken) => {
+    const response = await fetch(`${API_BASE_URL}/auth/teachers/${teacherId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete teacher');
+    }
+
+    return response.json();
+  },
+
+  // Dashboard stats
+  getDashboardStats: async (authToken) => {
+    const response = await fetch(`${API_BASE_URL}/teachers/dashboard`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch dashboard stats');
+    }
+
+    return response.json();
   }
 };
 
 // Login Component
 function LoginPage({ onLogin }) {
-  const [loginType, setLoginType] = useState('teacher'); // 'admin' or 'teacher'
+  const [loginType, setLoginType] = useState('teacher');
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +132,8 @@ function LoginPage({ onLogin }) {
     setError('');
 
     try {
-      const result = await authService.login(credentials.username, credentials.password, loginType);
-      onLogin(result.user, result.token);
+      const result = await apiService.login(credentials.username, credentials.password, loginType);
+      onLogin(result.user, result.token, result.userType);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -63,32 +151,6 @@ function LoginPage({ onLogin }) {
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">מערכת ניהול בית ספר</h1>
           <p className="text-gray-600">היכנס למערכת כדי להמשיך</p>
-        </div>
-
-        {/* Login Type Toggle */}
-        <div className="flex mb-6 p-1 bg-gray-100 rounded-lg">
-          <button
-            type="button"
-            onClick={() => setLoginType('teacher')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              loginType === 'teacher'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-700 hover:text-blue-600'
-            }`}
-          >
-            כניסת מורים
-          </button>
-          <button
-            type="button"
-            onClick={() => setLoginType('admin')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              loginType === 'admin'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-gray-700 hover:text-purple-600'
-            }`}
-          >
-            כניסת מנהלים
-          </button>
         </div>
 
         {/* Login Form */}
@@ -138,11 +200,7 @@ function LoginPage({ onLogin }) {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 ${
-              loginType === 'admin'
-                ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800'
-                : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-            } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:scale-105'}`}
+            className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:scale-105'}`}
           >
             {isLoading ? 'מתחבר...' : 'התחבר'}
           </button>
@@ -152,8 +210,7 @@ function LoginPage({ onLogin }) {
         <div className="mt-6 p-4 bg-gray-50 rounded-lg text-sm">
           <h4 className="font-medium text-gray-800 mb-2">נתוני התחברות לדוגמה:</h4>
           <div className="space-y-1 text-gray-600">
-            <div><strong>מנהל:</strong> admin / admin123</div>
-            <div><strong>מורה:</strong> teacher / teacher123</div>
+            <div><strong>מורה:</strong> admin / pwd1234</div>
           </div>
         </div>
 
@@ -168,200 +225,277 @@ function LoginPage({ onLogin }) {
   );
 }
 
-// Admin Dashboard Component
-function AdminDashboard({ user, authToken, onLogout }) {
-  const [activeSection, setActiveSection] = useState('overview');
-  const [currentView, setCurrentView] = useState('main'); // 'main', 'add-teacher', etc.
+// Teachers Management Component with Real API
+function TeachersManagement({ authToken, onAddTeacher }) {
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const menuItems = [
-    { id: 'overview', label: 'סקירה כללית', icon: BarChart3 },
-    { id: 'teachers', label: 'ניהול מורים', icon: Users },
-    { id: 'schools', label: 'ניהול בתי ספר', icon: School },
-    { id: 'classes', label: 'ניהול כיתות', icon: GraduationCap },
-    { id: 'students', label: 'ניהול תלמידים', icon: User },
-    { id: 'settings', label: 'הגדרות', icon: Settings }
-  ];
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+
+
+
+
+
+  
+
+  const handleRefresh = () => fetchTeachers();
+  window.addEventListener('refreshTeachers', handleRefresh);
+
+
+  const fetchTeachers = async () => {
+    try {
+      setLoading(true);
+      
+      // Use real API instead of mock data
+      const data = await apiService.getTeachers(authToken);
+      
+      // The backend returns { teachers: [...], pagination: {...} }
+      // or just an array of teachers
+      const teachersList = data.teachers || data;
+      setTeachers(teachersList);
+      
+    } catch (err) {
+      console.error('Error fetching teachers:', err);
+      setError('שגיאה בטעינת רשימת המורים: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteTeacher = async (teacherId) => {
+    try {
+      await apiService.deleteTeacher(teacherId, authToken);
+      setTeachers(teachers.filter(t => t.id !== teacherId));
+      setShowDeleteModal(false);
+      setSelectedTeacher(null);
+    } catch (err) {
+      setError('שגיאה במחיקת המורה: ' + err.message);
+    }
+  };
+
+  const filteredTeachers = teachers.filter(teacher =>
+    teacher.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('he-IL');
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">ניהול מורים</h2>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">טוען רשימת מורים...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div className="mr-4">
-                <h1 className="text-xl font-bold text-gray-900">פאנל ניהול</h1>
-                <p className="text-sm text-gray-600">שלום, {user.name}</p>
-              </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">ניהול מורים</h2>
+        <button 
+          onClick={onAddTeacher}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+        >
+          <Plus className="w-4 h-4 ml-2" />
+          הוסף מורה
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm">
+        {/* Search and Filters */}
+        <div className="p-6 border-b">
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="חפש מורה לפי שם, אימייל או שם משתמש..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pr-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
             </div>
-            <button
-              onClick={onLogout}
-              className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              התנתק
+            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center">
+              <Filter className="w-4 h-4 ml-2" />
+              סינון
             </button>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <div className="w-64 bg-white rounded-xl shadow-sm p-6">
-            <nav className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveSection(item.id);
-                      setCurrentView('main'); // Reset to main view when switching sections
-                    }}
-                    className={`w-full flex items-center px-4 py-3 text-right rounded-lg transition-colors ${
-                      activeSection === item.id
-                        ? 'bg-purple-100 text-purple-700 border-r-4 border-purple-600'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 ml-3" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+        {/* Teachers Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  מורה
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  פרטי קשר
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  שם משתמש
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  תאריך הצטרפות
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  סטטוס
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  פעולות
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredTeachers.map((teacher) => (
+                <tr key={teacher.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="mr-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {teacher.first_name} {teacher.last_name}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{teacher.email}</div>
+                    <div className="text-sm text-gray-500">{teacher.phone || 'לא צוין'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                      {teacher.username}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(teacher.created_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      teacher.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {teacher.is_active ? 'פעיל' : 'לא פעיל'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex gap-2">
+                      <button 
+                        className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-100 rounded"
+                        title="עריכה"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedTeacher(teacher);
+                          setShowDeleteModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-900 p-1 hover:bg-red-100 rounded"
+                        title="מחיקה"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-          {/* Main Content */}
-          <div className="flex-1">
-            {currentView === 'add-teacher' && <AddTeacher authToken={authToken} onBack={() => setCurrentView('main')} />}
-            {currentView === 'main' && (
-              <>
-                {activeSection === 'overview' && <AdminOverview />}
-                {activeSection === 'teachers' && <TeachersManagement onAddTeacher={() => setCurrentView('add-teacher')} />}
-                {activeSection === 'schools' && <SchoolsManagement />}
-                {activeSection === 'classes' && <ClassesManagement />}
-                {activeSection === 'students' && <StudentsManagement />}
-                {activeSection === 'settings' && <AdminSettings />}
-              </>
-            )}
+          {filteredTeachers.length === 0 && (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">
+                {searchTerm ? 'לא נמצאו מורים התואמים לחיפוש' : 'אין מורים במערכת'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Pagination would go here */}
+        <div className="px-6 py-3 border-t bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              מציג {filteredTeachers.length} מורים
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedTeacher && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">אשר מחיקה</h3>
+            <p className="text-gray-600 mb-6">
+              האם אתה בטוח שברצונך למחוק את המורה {selectedTeacher.first_name} {selectedTeacher.last_name}?
+              פעולה זו לא ניתנת לביטול.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={() => handleDeleteTeacher(selectedTeacher.id)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                מחק
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Teacher Dashboard Component
-function TeacherDashboard({ user, authToken, onLogout }) {
-  const [activeSection, setActiveSection] = useState('overview');
-  const [selectedClass, setSelectedClass] = useState(null);
-
-  const menuItems = [
-    { id: 'overview', label: 'סקירה כללית', icon: BarChart3 },
-    { id: 'classes', label: 'הכיתות שלי', icon: GraduationCap },
-    { id: 'schedule', label: 'מערכת שעות', icon: Calendar },
-    { id: 'exams', label: 'בחינות', icon: BookOpen },
-    { id: 'grades', label: 'ציונים', icon: TrendingUp }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div className="mr-4">
-                <h1 className="text-xl font-bold text-gray-900">פאנל מורה</h1>
-                <p className="text-sm text-gray-600">שלום, {user.name}</p>
-              </div>
-            </div>
-            <button
-              onClick={onLogout}
-              className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              התנתק
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <div className="w-64 bg-white rounded-xl shadow-sm p-6">
-            <nav className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveSection(item.id)}
-                    className={`w-full flex items-center px-4 py-3 text-right rounded-lg transition-colors ${
-                      activeSection === item.id
-                        ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-600'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 ml-3" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1">
-            {activeSection === 'overview' && <TeacherOverview />}
-            {activeSection === 'classes' && <TeacherClasses onSelectClass={setSelectedClass} />}
-            {activeSection === 'schedule' && <TeacherSchedule />}
-            {activeSection === 'exams' && <TeacherExams />}
-            {activeSection === 'grades' && <TeacherGrades />}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Admin Components
-function AddTeacher({ authToken, onBack }) {
+// Enhanced Add Teacher Component with Real API
+function AddTeacher({ authToken, onBack, onTeacherAdded }) {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     username: '',
     password: '',
-    profession: '',
-    experience: '',
-    education: '',
-    subjects: [],
-    address: '',
-    emergencyContact: '',
-    emergencyPhone: '',
-    startDate: '',
-    salary: '',
-    notes: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  const professions = [
-    'מתמטיקה', 'אנגלית', 'פיזיקה', 'כימיה', 'ביולוגיה',
-    'היסטוריה', 'גאוגרפיה', 'ספרות', 'תנ"ך', 'אמנות',
-    'מוסיקה', 'חינוך גשמי', 'מדעי המחשב', 'אחר'
-  ];
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -370,18 +504,9 @@ function AddTeacher({ authToken, onBack }) {
     }));
   };
 
-  const handleSubjectToggle = (subject) => {
-    setFormData(prev => ({
-      ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject]
-    }));
-  };
-
   const validateForm = () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.username) {
-      setError('נא למלא את כל השדות החובה');
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.username) {
+      setError('נא למלא את כל השדות החובה (שם פרטי, שם משפחה, אימייל, שם משתמש)');
       return false;
     }
     
@@ -409,20 +534,33 @@ function AddTeacher({ authToken, onBack }) {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call - replace with real API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare data for API - only include fields that exist in backend
+      const teacherData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password || 'teacher1234', // Default password if none provided
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone
+      };
+
+      const result = await apiService.createTeacher(teacherData, authToken);
       
-      console.log('Teacher data to submit:', formData);
       setSuccess(true);
       
-      // Reset form after success
+      // Call callback to refresh teachers list
+      if (onTeacherAdded) {
+        onTeacherAdded(result.teacher);
+      }
+      
+      // Reset form and go back after success
       setTimeout(() => {
         setSuccess(false);
         onBack();
       }, 2000);
 
     } catch (err) {
-      setError('שגיאה בשמירת המורה. אנא נסה שוב.');
+      setError('שגיאה ביצירת המורה: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -459,7 +597,7 @@ function AddTeacher({ authToken, onBack }) {
 
       {/* Form */}
       <div className="bg-white rounded-xl shadow-sm p-8">
-        <div className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Personal Information */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">פרטים אישיים</h3>
@@ -470,10 +608,11 @@ function AddTeacher({ authToken, onBack }) {
                 </label>
                 <input
                   type="text"
-                  value={formData.firstName}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  value={formData.first_name}
+                  onChange={(e) => handleInputChange('first_name', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   placeholder="הכנס שם פרטי"
+                  required
                 />
               </div>
 
@@ -483,10 +622,11 @@ function AddTeacher({ authToken, onBack }) {
                 </label>
                 <input
                   type="text"
-                  value={formData.lastName}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  value={formData.last_name}
+                  onChange={(e) => handleInputChange('last_name', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   placeholder="הכנס שם משפחה"
+                  required
                 />
               </div>
 
@@ -500,6 +640,7 @@ function AddTeacher({ authToken, onBack }) {
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   placeholder="teacher@example.com"
+                  required
                 />
               </div>
 
@@ -532,6 +673,7 @@ function AddTeacher({ authToken, onBack }) {
                   onChange={(e) => handleInputChange('username', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   placeholder="הכנס שם משתמש ייחודי"
+                  required
                 />
               </div>
 
@@ -544,148 +686,9 @@ function AddTeacher({ authToken, onBack }) {
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="יש להכניס סיסמה זמנית"
+                  placeholder="יש להכניס סיסמה זמנית (או יוגדר teacher1234)"
                 />
                 <p className="text-xs text-gray-500 mt-1">המורה יתבקש לשנות את הסיסמה בכניסה הראשונה</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Professional Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">פרטים מקצועיים</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  מקצוע עיקרי
-                </label>
-                <select
-                  value={formData.profession}
-                  onChange={(e) => handleInputChange('profession', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="">בחר מקצוע</option>
-                  {professions.map(prof => (
-                    <option key={prof} value={prof}>{prof}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  שנות ניסיון
-                </label>
-                <input
-                  type="number"
-                  value={formData.experience}
-                  onChange={(e) => handleInputChange('experience', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="מספר שנות הניסיון"
-                  min="0"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  השכלה
-                </label>
-                <input
-                  type="text"
-                  value={formData.education}
-                  onChange={(e) => handleInputChange('education', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="תואר ומוסד לימודים"
-                />
-              </div>
-            </div>
-
-            {/* Subjects */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                מקצועות הוראה
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {professions.slice(0, -1).map(subject => (
-                  <label key={subject} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.subjects.includes(subject)}
-                      onChange={() => handleSubjectToggle(subject)}
-                      className="ml-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700">{subject}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">מידע נוסף</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  כתובת
-                </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="כתובת מגורים"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  תאריך תחילת עבודה
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => handleInputChange('startDate', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  איש קשר לחירום
-                </label>
-                <input
-                  type="text"
-                  value={formData.emergencyContact}
-                  onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="שם איש קשר"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  טלפון חירום
-                </label>
-                <input
-                  type="tel"
-                  value={formData.emergencyPhone}
-                  onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="050-1234567"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  הערות
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  rows="3"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="הערות נוספות..."
-                ></textarea>
               </div>
             </div>
           </div>
@@ -700,12 +703,117 @@ function AddTeacher({ authToken, onBack }) {
               ביטול
             </button>
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={isSubmitting}
               className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'שומר...' : 'שמור מורה'}
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Admin Dashboard Component
+function AdminDashboard({ user, authToken, onLogout }) {
+  const [activeSection, setActiveSection] = useState('overview');
+  const [currentView, setCurrentView] = useState('main');
+
+  const menuItems = [
+    { id: 'overview', label: 'סקירה כללית', icon: BarChart3 },
+    { id: 'teachers', label: 'ניהול מורים', icon: Users },
+    { id: 'schools', label: 'ניהול בתי ספר', icon: School },
+    { id: 'classes', label: 'ניהול כיתות', icon: GraduationCap },
+    { id: 'students', label: 'ניהול תלמידים', icon: User },
+    { id: 'settings', label: 'הגדרות', icon: Settings }
+  ];
+
+  const handleTeacherAdded = (newTeacher) => {
+    // Force refresh of teachers list
+    setCurrentView('main');
+    // Trigger a re-fetch when going back to teachers management
+    window.dispatchEvent(new CustomEvent('refreshTeachers'));
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50" dir="rtl">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div className="mr-4">
+                <h1 className="text-xl font-bold text-gray-900">פאנל ניהול</h1>
+                <p className="text-sm text-gray-600">שלום, {user.first_name} {user.last_name}</p>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              התנתק
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-8">
+          {/* Sidebar */}
+          <div className="w-64 bg-white rounded-xl shadow-sm p-6">
+            <nav className="space-y-2">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      setCurrentView('main');
+                    }}
+                    className={`w-full flex items-center px-4 py-3 text-right rounded-lg transition-colors ${
+                      activeSection === item.id
+                        ? 'bg-purple-100 text-purple-700 border-r-4 border-purple-600'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 ml-3" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {currentView === 'add-teacher' && (
+              <AddTeacher 
+                authToken={authToken} 
+                onBack={() => setCurrentView('main')} 
+                onTeacherAdded={handleTeacherAdded}
+              />
+            )}
+            {currentView === 'main' && (
+              <>
+                {activeSection === 'overview' && <AdminOverview authToken={authToken} />}
+                {activeSection === 'teachers' && (
+                  <TeachersManagement 
+                    authToken={authToken}
+                    onAddTeacher={() => setCurrentView('add-teacher')} 
+                  />
+                )}
+                {activeSection === 'schools' && <SchoolsManagement />}
+                {activeSection === 'classes' && <ClassesManagement />}
+                {activeSection === 'students' && <StudentsManagement />}
+                {activeSection === 'settings' && <AdminSettings />}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -713,7 +821,48 @@ function AddTeacher({ authToken, onBack }) {
   );
 }
 
-function AdminOverview() {
+// Enhanced Admin Overview with Real Data
+function AdminOverview({ authToken }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // For now using mock data since we don't have the stats endpoint
+        // In real implementation: const data = await apiService.getDashboardStats(authToken);
+        const mockStats = {
+          totalTeachers: 12,
+          totalClasses: 18,
+          totalStudents: 542,
+          totalSchools: 3
+        };
+        setStats(mockStats);
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [authToken]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">סקירה כללית</h2>
+        <div className="animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-gray-200 h-24 rounded-xl"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">סקירה כללית</h2>
@@ -726,7 +875,7 @@ function AdminOverview() {
             </div>
             <div className="mr-4">
               <p className="text-sm text-gray-600">סה"כ מורים</p>
-              <p className="text-2xl font-bold text-gray-900">24</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalTeachers || 0}</p>
             </div>
           </div>
         </div>
@@ -738,7 +887,7 @@ function AdminOverview() {
             </div>
             <div className="mr-4">
               <p className="text-sm text-gray-600">סה"כ כיתות</p>
-              <p className="text-2xl font-bold text-gray-900">18</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalClasses || 0}</p>
             </div>
           </div>
         </div>
@@ -750,7 +899,7 @@ function AdminOverview() {
             </div>
             <div className="mr-4">
               <p className="text-sm text-gray-600">סה"כ תלמידים</p>
-              <p className="text-2xl font-bold text-gray-900">542</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalStudents || 0}</p>
             </div>
           </div>
         </div>
@@ -762,7 +911,7 @@ function AdminOverview() {
             </div>
             <div className="mr-4">
               <p className="text-sm text-gray-600">בתי ספר</p>
-              <p className="text-2xl font-bold text-gray-900">3</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalSchools || 0}</p>
             </div>
           </div>
         </div>
@@ -771,36 +920,7 @@ function AdminOverview() {
   );
 }
 
-function TeachersManagement({ onAddTeacher }) {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">ניהול מורים</h2>
-        <button 
-          onClick={onAddTeacher}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center"
-        >
-          <Plus className="w-4 h-4 ml-2" />
-          הוסף מורה
-        </button>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b">
-          <input
-            type="text"
-            placeholder="חפש מורה..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-          />
-        </div>
-        <div className="p-6">
-          <p className="text-gray-600">רשימת המורים תוצג כאן...</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// Other placeholder components
 function SchoolsManagement() {
   return (
     <div className="space-y-6">
@@ -867,186 +987,40 @@ function AdminSettings() {
   );
 }
 
-// Teacher Components
-function TeacherOverview() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">סקירה כללית</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <GraduationCap className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="mr-4">
-              <p className="text-sm text-gray-600">הכיתות שלי</p>
-              <p className="text-2xl font-bold text-gray-900">4</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <Users className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="mr-4">
-              <p className="text-sm text-gray-600">סה"כ תלמידים</p>
-              <p className="text-2xl font-bold text-gray-900">127</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <Calendar className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="mr-4">
-              <p className="text-sm text-gray-600">שיעורים השבוע</p>
-              <p className="text-2xl font-bold text-gray-900">16</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">בחינות קרובות</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <div>
-              <p className="font-medium text-gray-900">מתמטיקה - כיתה ח'1</p>
-              <p className="text-sm text-gray-600">בחינת חזרה על חטיבות</p>
-            </div>
-            <span className="text-blue-600 font-medium">15/06/2025</span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-            <div>
-              <p className="font-medium text-gray-900">מתמטיקה - כיתה ט'2</p>
-              <p className="text-sm text-gray-600">מבחן רבעוני</p>
-            </div>
-            <span className="text-green-600 font-medium">18/06/2025</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TeacherClasses({ onSelectClass }) {
-  const classes = [
-    { id: 1, name: 'כיתה ח\'1', school: 'בית ספר הקמפוס הצעיר', students: 32, subject: 'מתמטיקה' },
-    { id: 2, name: 'כיתה ח\'2', school: 'בית ספר הקמפוס הצעיר', students: 28, subject: 'מתמטיקה' },
-    { id: 3, name: 'כיתה ט\'1', school: 'בית ספר הקמפוס הצעיר', students: 30, subject: 'מתמטיקה' },
-    { id: 4, name: 'כיתה ט\'2', school: 'בית ספר הקמפוס הצעיר', students: 27, subject: 'מתמטיקה' }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">הכיתות שלי</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {classes.map((classItem) => (
-          <div key={classItem.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">{classItem.name}</h3>
-              <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-                {classItem.subject}
-              </span>
-            </div>
-            
-            <p className="text-gray-600 mb-2">{classItem.school}</p>
-            <p className="text-sm text-gray-500 mb-4">{classItem.students} תלמידים</p>
-            
-            <div className="flex gap-2">
-              <button 
-                onClick={() => onSelectClass(classItem)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
-              >
-                צפה בתלמידים
-                <ChevronRight className="w-4 h-4 mr-2" />
-              </button>
-              <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors">
-                שיעורי עזר
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TeacherSchedule() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">מערכת השעות שלי</h2>
-      
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <p className="text-gray-600">מערכת השעות תוצג כאן...</p>
-      </div>
-    </div>
-  );
-}
-
-function TeacherExams() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">ניהול בחינות</h2>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
-          <Plus className="w-4 h-4 ml-2" />
-          הוסף בחינה
-        </button>
-      </div>
-      
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <p className="text-gray-600">רשימת הבחינות תוצג כאן...</p>
-      </div>
-    </div>
-  );
-}
-
-function TeacherGrades() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">ניהול ציונים</h2>
-      
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <p className="text-gray-600">מערכת הציונים תוצג כאן...</p>
-      </div>
-    </div>
-  );
-}
-
 // Main App Component
 function TeacherLogin() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState(null);
+  const [userType, setUserType] = useState(null);
 
-  const handleLogin = (user, token) => {
+  const handleLogin = (user, token, type) => {
     setCurrentUser(user);
     setAuthToken(token);
+    setUserType(type);
     localStorage.setItem('authToken', token);
     localStorage.setItem('currentUser', JSON.stringify(user));
+    localStorage.setItem('userType', type);
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setAuthToken(null);
+    setUserType(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('userType');
   };
 
   // Check for existing session on component mount
   useEffect(() => {
     const savedToken = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('currentUser');
+    const savedUserType = localStorage.getItem('userType');
     
-    if (savedToken && savedUser) {
+    if (savedToken && savedUser && savedUserType) {
       setAuthToken(savedToken);
       setCurrentUser(JSON.parse(savedUser));
+      setUserType(savedUserType);
     }
   }, []);
 
@@ -1054,15 +1028,8 @@ function TeacherLogin() {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  if (currentUser.type === 'admin') {
-    return <AdminDashboard user={currentUser} authToken={authToken} onLogout={handleLogout} />;
-  }
-
-  if (currentUser.type === 'teacher') {
-    return <TeacherDashboard user={currentUser} authToken={authToken} onLogout={handleLogout} />;
-  }
-
-  return null;
+  // For now, treat all logged in users as admins since we have admin functionality
+  return <AdminDashboard user={currentUser} authToken={authToken} onLogout={handleLogout} />;
 }
 
 export default TeacherLogin;

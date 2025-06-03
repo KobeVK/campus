@@ -1,117 +1,153 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
 // Database configuration
 const dbConfig = {
-  user: process.env.DB_USER || 'school_user',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'school_management',
+  user: process.env.DB_USER || 'campus_admin',
+  host: process.env.NODE_ENV === 'production' 
+    ? 'rds-campus2.czkduehwi9ml.eu-central-1.rds.amazonaws.com'  // Direct RDS in production
+    : '127.0.0.1',  // StrongDM tunnel for local development
+  database: process.env.DB_NAME || 'campus',
   password: process.env.DB_PASSWORD || 'school_password_2025',
-  port: process.env.DB_PORT || 5432,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close clients after 30 seconds of inactivity
-  connectionTimeoutMillis: 2000, // Return an error if connection takes longer than 2 seconds
+  port: process.env.NODE_ENV === 'production' 
+    ? 5432  // Direct RDS port
+    : (process.env.DB_PORT || 10403),  // StrongDM port for local
+  ssl: process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false }  // SSL for RDS
+    : false,  // No SSL for local tunnel
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 };
+
+console.log(`🔧 Database config for ${process.env.NODE_ENV || 'development'}:`);
+console.log(`   Host: ${dbConfig.host}:${dbConfig.port}`);
+console.log(`   Database: ${dbConfig.database}`);
+console.log(`   SSL: ${dbConfig.ssl ? 'enabled' : 'disabled'}`);
 
 // Create connection pool
 const pool = new Pool(dbConfig);
 
-// Test database connection
-pool.on('connect', (client) => {
-  console.log('🗄️  Connected to PostgreSQL database');
+// Test connection on startup
+pool.on('connect', () => {
+  console.log('📊 Database connected successfully');
 });
 
-pool.on('error', (err, client) => {
-  console.error('🚨 Unexpected error on idle client', err);
-  process.exit(-1);
+pool.on('error', (err) => {
+  console.error('💥 Database connection error:', err);
 });
 
-// Helper function to execute queries
-const query = async (text, params) => {
+// Query function with logging
+const query = async (text, params = []) => {
   const start = Date.now();
   try {
-    const res = await pool.query(text, params);
+    const result = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log('📊 Query executed', { text: text.substring(0, 50) + '...', duration, rows: res.rowCount });
-    return res;
-  } catch (error) {
-    console.error('🚨 Database query error:', error);
-    throw error;
-  }
-};
-
-// Helper function to get a client from the pool (for transactions)
-const getClient = async () => {
-  return await pool.connect();
-};
-
-// Helper function to execute transactions
-const transaction = async (callback) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await callback(client);
-    await client.query('COMMIT');
+    console.log('📊 Query executed', { 
+      text: text.substring(0, 100) + (text.length > 100 ? '...' : ''), 
+      duration, 
+      rows: result.rowCount 
+    });
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    console.error('💥 Query error:', error);
+    console.error('💥 Query text:', text);
+    console.error('💥 Query params:', params);
     throw error;
-  } finally {
-    client.release();
   }
 };
 
 // Database utility functions
 const dbUtils = {
-  // Check if user exists
-  async userExists(table, field, value) {
-    const result = await query(
-      `SELECT EXISTS(SELECT 1 FROM ${table} WHERE ${field} = $1)`,
-      [value]
-    );
-    return result.rows[0].exists;
+  // Get user by field (generic function)
+  getUserByField: async (table, field, value) => {
+    try {
+      console.log(`🔍 Looking up user in ${table} where ${field} = ${value}`);
+      const result = await query(
+        `SELECT * FROM ${table} WHERE ${field} = $1 AND is_active = TRUE`,
+        [value]
+      );
+      
+      if (result.rows.length === 0) {
+        console.log(`❌ No user found in ${table} with ${field} = ${value}`);
+        return null;
+      }
+      
+      console.log(`✅ User found in ${table}:`, { 
+        id: result.rows[0].id, 
+        [field]: result.rows[0][field] 
+      });
+      return result.rows[0];
+    } catch (error) {
+      console.error(`💥 Error getting user from ${table}:`, error);
+      throw error;
+    }
   },
 
-  // Get user by field
-  async getUserByField(table, field, value) {
-    const result = await query(
-      `SELECT * FROM ${table} WHERE ${field} = $1 AND is_active = TRUE`,
-      [value]
-    );
-    return result.rows[0] || null;
+  // Update password
+  updatePassword: async (table, userId, passwordHash) => {
+    try {
+      const result = await query(
+        `UPDATE ${table} SET password_hash = $1, must_change_password = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [passwordHash, userId]
+      );
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error('💥 Error updating password:', error);
+      throw error;
+    }
   },
 
-  // Update user password
-  async updatePassword(table, userId, passwordHash) {
-    const result = await query(
-      `UPDATE ${table} SET password_hash = $1, must_change_password = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [passwordHash, userId]
-    );
-    return result.rowCount > 0;
-  },
+  // Get all teachers
+  getAllTeachers: async (limit = 50, offset = 0, search = '') => {
+    try {
+      let queryText = `
+        SELECT id, username, email, first_name, last_name, phone, created_at, updated_at, is_active
+        FROM teachers 
+        WHERE is_active = TRUE
+      `;
+      
+      const queryParams = [];
+      let paramCount = 1;
 
-  // Get classes by teacher ID
-  async getClassesByTeacher(teacherId) {
-    const result = await query(
-      `SELECT * FROM classes WHERE teacher_id = $1 AND is_active = TRUE ORDER BY created_at DESC`,
-      [teacherId]
-    );
-    return result.rows;
-  },
+      // Add search functionality
+      if (search) {
+        queryText += ` AND (
+          first_name ILIKE $${paramCount} OR 
+          last_name ILIKE $${paramCount} OR 
+          email ILIKE $${paramCount} OR 
+          username ILIKE $${paramCount}
+        )`;
+        queryParams.push(`%${search}%`);
+        paramCount++;
+      }
 
-  // Get students by class ID
-  async getStudentsByClass(classId) {
-    const result = await query(
-      `SELECT * FROM students WHERE class_id = $1 AND is_active = TRUE ORDER BY full_name ASC`,
-      [classId]
-    );
-    return result.rows;
+      queryText += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      queryParams.push(limit, offset);
+
+      const result = await query(queryText, queryParams);
+      return result.rows;
+    } catch (error) {
+      console.error('💥 Error getting teachers:', error);
+      throw error;
+    }
+  }
+};
+
+// Test database connection
+const testConnection = async () => {
+  try {
+    const result = await query('SELECT NOW() as current_time');
+    return true;
+  } catch (error) {
+    console.error('❌ Database connection test failed:', error);
+    return false;
   }
 };
 
 module.exports = {
   pool,
   query,
-  getClient,
-  transaction,
-  dbUtils
+  dbUtils,
+  testConnection
 };

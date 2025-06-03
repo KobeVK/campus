@@ -88,5 +88,5 @@ app.listen(PORT, () => {
   console.log(`🚀 School Management Server running on port ${PORT}`);
   console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`💾 Database: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
+  console.log(`💾 Database: 127.0.0.1:10403/${process.env.DB_NAME}`);
 });
