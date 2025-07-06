@@ -561,14 +561,14 @@ psql -h new-rds < backup.sql
 
 ```
 kubectl create secret docker-registry jfrog-secret \
-  --docker-server=https://campus2.jfrtpt.org \
+  --docker-server=https://campus0507.jfrtpt.org \
   --docker-username=admin \
   --docker-password=Omer1107 \
   --docker-email=admin@campus.local \
   -n campus
 ```
 
-1. change all occurences of campus2 to new domain
+1. change all occurences of campus0507 to new domain
 2. change rds port
 3. log in to artifactory and change PWD to Omer1107
 4. create docker repo called docker

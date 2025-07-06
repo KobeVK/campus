@@ -70,6 +70,14 @@ CREATE TABLE IF NOT EXISTS student_logins (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Schools table
+CREATE TABLE IF NOT EXISTS schools (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Add indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_teachers_username ON teachers(username);
 CREATE INDEX IF NOT EXISTS idx_teachers_email ON teachers(email);
@@ -142,3 +150,7 @@ $$;
 
 -- Verify setup
 SELECT 'Database setup completed successfully!' as status;
+
+-- Default admin teacher account
+INSERT INTO teachers (username, email, password_hash, first_name, last_name, is_active, must_change_password)
+VALUES ('admin', 'admin@school.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZGHFQW1Yy1Q9wF6r0Yy3yF6lI1eWy', 'Admin', 'User', TRUE, TRUE);

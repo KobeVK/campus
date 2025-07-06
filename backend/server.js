@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const teacherRoutes = require('./routes/teachers');
 const studentRoutes = require('./routes/students');
 const classRoutes = require('./routes/classes');
+const schoolsRoutes = require('./routes/schools');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,8 +47,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    service: 'School Management API',
-    environment: process.env.NODE_ENV || 'development'
+    service: 'School Management API'
   });
 });
 
@@ -56,6 +56,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/classes', classRoutes);
+app.use('/api/schools', schoolsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -68,25 +69,15 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  
-  if (process.env.NODE_ENV === 'production') {
-    res.status(500).json({ 
-      error: 'Internal server error',
-      timestamp: new Date().toISOString()
-    });
-  } else {
-    res.status(500).json({ 
-      error: err.message,
-      stack: err.stack,
-      timestamp: new Date().toISOString()
-    });
-  }
+  res.status(500).json({ 
+    error: 'Internal server error',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 School Management Server running on port ${PORT}`);
-  console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`💾 Database: 127.0.0.1:10403/${process.env.DB_NAME}`);
+  console.log(`💾 Database: ${process.env.DB_HOST || 'rds-campus0507.czkduehwi9ml.eu-central-1.rds.amazonaws.com'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'campus'}`);
 });

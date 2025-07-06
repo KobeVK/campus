@@ -4,26 +4,20 @@ require('dotenv').config();
 // Database configuration
 const dbConfig = {
   user: process.env.DB_USER || 'campus_admin',
-  host: process.env.NODE_ENV === 'production' 
-    ? 'rds-campus2.czkduehwi9ml.eu-central-1.rds.amazonaws.com'  // Direct RDS in production
-    : '127.0.0.1',  // StrongDM tunnel for local development
+  host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'campus',
   password: process.env.DB_PASSWORD || 'school_password_2025',
-  port: process.env.NODE_ENV === 'production' 
-    ? 5432  // Direct RDS port
-    : (process.env.DB_PORT || 10403),  // StrongDM port for local
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false }  // SSL for RDS
-    : false,  // No SSL for local tunnel
+  port: parseInt(process.env.DB_PORT) || 5432,
+  ssl: { rejectUnauthorized: false },
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 };
 
-console.log(`🔧 Database config for ${process.env.NODE_ENV || 'development'}:`);
+console.log(`🔧 Database config:`);
 console.log(`   Host: ${dbConfig.host}:${dbConfig.port}`);
 console.log(`   Database: ${dbConfig.database}`);
-console.log(`   SSL: ${dbConfig.ssl ? 'enabled' : 'disabled'}`);
+console.log(`   SSL: enabled`);
 
 // Create connection pool
 const pool = new Pool(dbConfig);

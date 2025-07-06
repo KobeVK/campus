@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Users, Calendar, GraduationCap, Settings, BarChart3, Plus, User, School, ChevronRight, Eye, EyeOff, Clock, TrendingUp, Edit, Trash2, Search, Filter } from 'lucide-react';
+import TeacherPortal from './TeacherPortal';
 
 // API Configuration
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+const API_BASE_URL = '/api';
 
 // API Service
 const apiService = {
@@ -238,16 +239,8 @@ function TeachersManagement({ authToken, onAddTeacher }) {
     fetchTeachers();
   }, []);
 
-
-
-
-
-
-  
-
   const handleRefresh = () => fetchTeachers();
   window.addEventListener('refreshTeachers', handleRefresh);
-
 
   const fetchTeachers = async () => {
     try {
@@ -1011,12 +1004,10 @@ function TeacherLogin() {
     localStorage.removeItem('userType');
   };
 
-  // Check for existing session on component mount
   useEffect(() => {
     const savedToken = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('currentUser');
     const savedUserType = localStorage.getItem('userType');
-    
     if (savedToken && savedUser && savedUserType) {
       setAuthToken(savedToken);
       setCurrentUser(JSON.parse(savedUser));
@@ -1028,8 +1019,12 @@ function TeacherLogin() {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  // For now, treat all logged in users as admins since we have admin functionality
-  return <AdminDashboard user={currentUser} authToken={authToken} onLogout={handleLogout} />;
+  // If admin, show admin dashboard; else, show teacher portal
+  if (currentUser.username === 'admin' || userType === 'admin') {
+    return <AdminDashboard user={currentUser} authToken={authToken} onLogout={handleLogout} />;
+  } else {
+    return <TeacherPortal user={currentUser} authToken={authToken} onLogout={handleLogout} />;
+  }
 }
 
 export default TeacherLogin;

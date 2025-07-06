@@ -33,6 +33,7 @@ const authenticateTeacher = async (req, res, next) => {
 const validateClass = [
   body('class_name').trim().isLength({ min: 2, max: 100 }).withMessage('Class name must be 2-100 characters'),
   body('school_name').trim().isLength({ min: 2, max: 200 }).withMessage('School name must be 2-200 characters'),
+  body('school_id').optional().isUUID().withMessage('Invalid school ID format'),
   body('profession').trim().isIn(['מתמטיקה', 'אנגלית', 'פיזיקה', 'כימיה', 'ביולוגיה', 'היסטוריה', 'גאוגרפיה', 'ספרות', 'תנ"ך', 'אמנות', 'מוסיקה', 'חינוך גשמי', 'מדעי המחשב']).withMessage('Invalid profession'),
   body('grade_level').optional().trim().isLength({ max: 20 }).withMessage('Grade level too long'),
   body('academic_year').optional().trim().matches(/^\d{4}$/).withMessage('Academic year must be 4 digits'),
@@ -51,6 +52,7 @@ router.post('/', authenticateTeacher, validateClass, async (req, res) => {
     const {
       class_name,
       school_name,
+      school_id,
       profession,
       grade_level,
       academic_year = '2025',
@@ -60,9 +62,9 @@ router.post('/', authenticateTeacher, validateClass, async (req, res) => {
 
     const insertQuery = `
       INSERT INTO classes (
-        teacher_id, class_name, school_name, profession, 
+        teacher_id, class_name, school_name, school_id, profession, 
         grade_level, academic_year, max_students, description
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
 
@@ -70,6 +72,7 @@ router.post('/', authenticateTeacher, validateClass, async (req, res) => {
       req.teacherId,
       class_name,
       school_name,
+      school_id || null,
       profession,
       grade_level,
       academic_year,
@@ -94,11 +97,12 @@ router.post('/', authenticateTeacher, validateClass, async (req, res) => {
 router.get('/', authenticateTeacher, async (req, res) => {
   try {
     const result = await query(`
-      SELECT c.*, COUNT(s.id) as student_count
+      SELECT c.*, s.name as school_full_name, COUNT(st.id) as student_count
       FROM classes c
-      LEFT JOIN students s ON c.id = s.class_id AND s.is_active = TRUE
+      LEFT JOIN schools s ON c.school_id = s.id
+      LEFT JOIN students st ON c.id = st.class_id AND st.is_active = TRUE
       WHERE c.teacher_id = $1 AND c.is_active = TRUE
-      GROUP BY c.id
+      GROUP BY c.id, s.name
       ORDER BY c.created_at DESC
     `, [req.teacherId]);
 
@@ -145,6 +149,7 @@ router.put('/:id', authenticateTeacher, validateClass, async (req, res) => {
     const {
       class_name,
       school_name,
+      school_id,
       profession,
       grade_level,
       academic_year,
@@ -166,19 +171,21 @@ router.put('/:id', authenticateTeacher, validateClass, async (req, res) => {
       UPDATE classes SET
         class_name = $1,
         school_name = $2,
-        profession = $3,
-        grade_level = $4,
-        academic_year = $5,
-        max_students = $6,
-        description = $7,
+        school_id = $3,
+        profession = $4,
+        grade_level = $5,
+        academic_year = $6,
+        max_students = $7,
+        description = $8,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8 AND teacher_id = $9
+      WHERE id = $9 AND teacher_id = $10
       RETURNING *
     `;
 
     const values = [
       class_name,
       school_name,
+      school_id || null,
       profession,
       grade_level,
       academic_year,

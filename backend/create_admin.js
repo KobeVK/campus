@@ -1,7 +1,7 @@
 // Generate password hash for admin user
 // Run with: node hash_password.js
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 async function generateHash() {
   const password = 'pwd1234';

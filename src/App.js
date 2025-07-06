@@ -3,10 +3,11 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react
 import { 
   Phone, Mail, MapPin, Calendar, Users, Award, BookOpen, 
   Star, ChevronRight, Menu, X, Facebook, Instagram, Youtube,
-  GraduationCap, Clock, Globe, Shield
+  GraduationCap, Clock, Globe, Shield, MessageCircle
 } from 'lucide-react';
 import TeacherLogin from './TeacherLogin';
 import StudentLogin from './StudentLogin';
+import TeacherPortal from './TeacherPortal';
 import './index.css';
 
 // Helper component to scroll to top on route change
@@ -20,6 +21,26 @@ function ScrollToTop() {
   }, [pathname]);
 
   return null;
+}
+
+// WhatsApp Floating Button Component
+function WhatsAppButton() {
+  const handleWhatsAppClick = () => {
+    const message = encodeURIComponent("היי, אשמח לשמוע פרטים נוספים");
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=972503147777&text=${message}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  return (
+    <button
+      onClick={handleWhatsAppClick}
+      className="fixed bottom-6 left-6 z-50 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+      title="צור קשר בווטסאפ"
+      aria-label="צור קשר בווטסאפ"
+    >
+      <MessageCircle className="w-6 h-6" />
+    </button>
+  );
 }
 
 // Main School Website Component
@@ -646,6 +667,9 @@ function SchoolWebsite() {
           </div>
         </div>
       </footer>
+      
+      {/* WhatsApp Floating Button */}
+      <WhatsAppButton />
     </div>
   );
 }
@@ -656,10 +680,12 @@ function App() {
     <Router>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<SchoolWebsite />} />
-        <Route path="/admin" element={<TeacherLogin />} />
-        <Route path="/student-login" element={<StudentLogin />} />
-      </Routes>
+          <Route path="/" element={<SchoolWebsite />} />
+          <Route path="/admin" element={<TeacherLogin />} />
+          <Route path="/teacher-portal" element={<TeacherPortal />} />
+          <Route path="/student-login" element={<StudentLogin />} />
+      </Routes>      
+      <WhatsAppButton />
     </Router>
   );
 }

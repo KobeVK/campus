@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM node:20-alpine
+FROM --platform=linux/arm64 node:20-alpine
 
 # Create app directory
 WORKDIR /app
@@ -9,7 +9,9 @@ RUN adduser -S backend -u 1001
 
 # Copy package files
 COPY backend/package*.json ./
-RUN npm install --only=production
+
+# Install dependencies (no native compilation needed with bcryptjs)
+RUN npm install
 
 # Copy backend source code
 COPY backend/ ./

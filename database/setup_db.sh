@@ -217,7 +217,6 @@ echo ""
 echo "👤 Creating default admin user..."
 
 # Generate password hash for 'pwd1234'
-# Note: In production, this should be changed immediately!
 ADMIN_PASSWORD_HASH='$2b$12$E8qhZ9q9vQ8rWr7YrQ7YrO.KQr7YrQ7YrQ7YrQ7YrQ7YrQ7YrQ7Yr'
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" << EOF

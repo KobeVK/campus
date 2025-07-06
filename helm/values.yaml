@@ -3,8 +3,8 @@ replicaCount: 1
 frontend:
   enabled: true
   image:
-    repository: campus2.jfrtpt.org/docker/campus
-    tag: latest-arm64
+    repository: campus0507.jfrtpt.org/docker/campus
+    tag: "0607new"
     pullPolicy: Always
   service:
     type: ClusterIP
@@ -14,17 +14,16 @@ frontend:
 backend:
   enabled: true
   image:
-    repository: campus2.jfrtpt.org/docker/campus-backend
-    tag: latest-arm64
+    repository: campus0507.jfrtpt.org/docker/campus-backend
+    tag: "0607new"
     pullPolicy: Always
   service:
     type: ClusterIP
     port: 3001
     targetPort: 3001
   env:
-    NODE_ENV: production
     PORT: "3001"
-    DB_HOST: "rds-campus2.czkduehwi9ml.eu-central-1.rds.amazonaws.com"
+    DB_HOST: "rds-campus0507.czkduehwi9ml.eu-central-1.rds.amazonaws.com"
     DB_PORT: "5432"
     DB_NAME: "campus"
     DB_USER: "campus_admin"

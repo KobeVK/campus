@@ -5,13 +5,18 @@
 
 set -e
 
-REGISTRY="campus2.jfrtpt.org/docker"
-TAG="latest-arm64"
+REGISTRY="campus0507.jfrtpt.org/docker"
+# Generate unique tag with timestamp to avoid caching
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+TAG="0607new"
 NAMESPACE="campus"
 
 echo "🏫 School Management System - Build and Deploy"
 echo "================================================"
-echo "📦 Building separate containers..."
+echo "🏷️  Using unique tag: $TAG"
+echo "🧹 Cleaning Docker cache..."
+
+echo "📦 Building separate containers with no cache..."
 
 # Function to build and push image
 build_and_push() {
@@ -20,7 +25,14 @@ build_and_push() {
     local context=$3
     
     echo "🔨 Building $image_name..."
-    docker build --platform linux/arm64 -f $dockerfile -t $image_name:$TAG $context
+    # Force no cache and pull latest base images
+    docker build --platform linux/arm64 \
+        --no-cache \
+        --pull \
+        --force-rm \
+        -f $dockerfile \
+        -t $image_name:$TAG \
+        $context
     
     echo "🏷️  Tagging $image_name..."
     docker tag $image_name:$TAG $REGISTRY/$image_name:$TAG
@@ -39,10 +51,17 @@ build_and_push "Dockerfile.frontend" "campus" "."
 build_and_push "Dockerfile.backend" "campus-backend" "."
 
 echo "🚀 Deploying separate containers..."
-helm upgrade --install campus-website ./helm -n $NAMESPACE
+
+# Update helm with new image tags
+helm upgrade --install campus-website ./helm \
+    --set frontend.image.tag=$TAG \
+    --set backend.image.tag=$TAG \
+    -n $NAMESPACE
 
 echo ""
 echo "🎉 Deployment completed!"
+echo ""
+echo "📋 IMPORTANT: Update your helm values.yaml with new tag: $TAG"
 echo ""
 echo "📊 Check status:"
 echo "kubectl get pods -n $NAMESPACE"
@@ -61,3 +80,19 @@ echo ""
 echo "🔧 Debug commands:"
 echo "kubectl describe ingress campus-website -n $NAMESPACE"
 echo "kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp' | tail -10"
+
+# notes:
+# create jat gpt env
+# create namespace
+# create new token
+# create secret with token
+# create repo caleld docker
+# get rds sdm port
+# change env name in all files
+# change port in .env
+# run ./runall.sh
+
+
+# teacher admin credentials:
+# Username: admin
+# Password: pwd1234
